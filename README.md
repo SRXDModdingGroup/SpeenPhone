@@ -8,3 +8,10 @@
  - Head to `Documents\Speen Mods\SpeenPhoneConfig.ini`
  - Change `/path/to/sound/file` to the path of whatever sound file you would like to use
  - Restart the game. If no errors or warnings are logged before the main menu loads, you should be good to go!
+
+## Roadmap
+ - [x] Play sound on note hits
+ - [ ] Play sound on misses
+ - [ ] Randomize sound (weight system)
+ - [ ] Hold sound
+ - [ ] Better sound configuration (possibly in-game?)
