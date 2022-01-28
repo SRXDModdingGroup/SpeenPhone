@@ -8,6 +8,7 @@
  - Head to `Documents\Speen Mods\SpeenPhoneConfig.ini`
  - Change `/path/to/hitsound/folder` to the path of whatever hitsound folder you want to use
  - Restart the game. If no errors or warnings are logged before the main menu loads, you should be good to go!
+ 
  (More details about the hitsound folder format [here](#hitsound-folder-info))
 
 ## Roadmap
