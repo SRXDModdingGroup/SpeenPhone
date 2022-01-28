@@ -40,6 +40,12 @@ namespace SpeenPhone
             {
                 LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the hitsounds folder path");
                 LogWarning("More informations on the GitHub page: https://github.com/SRXDModdingGroup/SpeenPhone#hitsound-folder-info");
+                return;
+            }
+            if (!Directory.Exists(hitsoundsPath))
+            {
+                LogError("The folder specified in the configuration file does not exist or is inaccessible.");
+                return;
             }
 
             if (Directory.Exists(Path.Combine(hitsoundsPath, "Fail")))
