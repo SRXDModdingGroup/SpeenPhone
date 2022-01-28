@@ -22,6 +22,8 @@ namespace SpeenPhone
         {
             logger = Logger;
 
+            if (!Directory.Exists(ConfigPath))
+                Directory.CreateDirectory(ConfigPath);
             if (!File.Exists(ConfigFileName))
                 File.Create(ConfigFileName).Close();
             Config = new IniFile(ConfigFileName);
