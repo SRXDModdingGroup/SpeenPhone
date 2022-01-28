@@ -1,30 +1,39 @@
 ﻿using HarmonyLib;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpeenPhone
 {
-    internal class AudioPatches
+    public class AudioPatches
     {
-        private static AudioClip clip;
+        public static AudioClip[] HitSounds;
+        public static AudioClip[] MissSounds;
+        public static AudioClip[] DeathSounds;
+        public static AudioClip[] WinSounds;
 
-        public static bool LoadAudio(string path)
+        private static bool disableHitsounds = false;
+
+        [HarmonyPatch(typeof(SoundEffectPlayer), nameof(SoundEffectPlayer.PlayOneShot))]
+        [HarmonyPrefix]
+        private static void Hitsound(ref SoundEffect soundEffect)
         {
-#pragma warning disable 0618
-            using (WWW www = new WWW(BepInEx.Utility.ConvertToWWWFormat(path)))
-#pragma warning restore 0618
+            if (disableHitsounds) return;
+            var sfe = SoundEffectAssets.Instance;
+            if (DeathSounds != null && DeathSounds.Length > 0 && soundEffect.clips == sfe.trackFailedSound.clips)
             {
-                try
-                {
-                    clip = www.GetAudioClip();
-                    while (clip.loadState != AudioDataLoadState.Loaded) { }
-                }
-                catch
-                {
-                    Main.LogError($"Error while loading {path}");
-                    Main.LogError(www.error);
-                }
-                Main.LogInfo($"Loaded audio file at {path}");
-                return true;
+                
+                soundEffect.clips = DeathSounds;
+                return;
+            }
+            if (WinSounds != null && WinSounds.Length > 0 && soundEffect.clips == sfe.trackCompleteSound.clips)
+            {
+                soundEffect.clips = WinSounds;
+                return;
+            }
+            if (MissSounds != null && MissSounds.Length > 0 && soundEffect.clips == sfe.loseHealthSound.clips)
+            {
+                soundEffect.clips = MissSounds;
+                return;
             }
         }
 
@@ -32,9 +41,19 @@ namespace SpeenPhone
         [HarmonyPostfix]
         private static void PlayNote(NoteSoundPlayer.NoteSoundType noteSoundType, SoundEffectAssets soundEffectAssets, ref SoundEffect __result)
         {
-            for (int i = 0; i < __result.clips.Length; i++)
+            if (disableHitsounds) return;
+            if (HitSounds == null || HitSounds.Length == 0) return;
+            __result.clips = HitSounds;
+        }
+
+        [HarmonyPatch(typeof(Track), nameof(Track.Update))]
+        [HarmonyPostfix]
+        private static void ToggleHitsounds()
+        {
+            if (Input.GetKeyDown(KeyCode.F12))
             {
-                __result.clips[i] = clip;
+                disableHitsounds = !disableHitsounds;
+                NotificationSystemGUI.AddMessage("Custom hitsounds are " + (disableHitsounds ? "OFF" : "ON"));
             }
         }
     }

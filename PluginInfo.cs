@@ -4,6 +4,6 @@
     {
         public const string GUID = "srxd.raoul1808.speenphone";
         public const string NAME = "SpeenPhone";
-        public const string VERSION = "1.0.0";
+        public const string VERSION = "1.1.0";
     }
 }
