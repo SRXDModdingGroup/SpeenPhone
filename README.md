@@ -11,7 +11,20 @@
 
 ## Roadmap
  - [x] Play sound on note hits
- - [ ] Play sound on misses
- - [ ] Randomize sound (weight system)
+ - [x] Play sound on misses
+ - [x] Randomize sound (~~weight system~~)
  - [ ] Hold sound
  - [ ] Better sound configuration (possibly in-game?)
+
+## Hitsound folder info
+ Since version 1.1.0, the configuration file now points to a folder rather than a single audio file. This folder must be structured like follows:
+ ```
+ HITSOUNDS FOLDER
+ ├───Fail
+ ├───Hit
+ ├───Miss
+ └───Win
+ ```
+ You don't have to create all the folders above, the mod will automatically detect if one is missing and skip it.
+ 
+ The game will pick up every sound in every directory and play it according to the folders they are placed in, and randomly (e.g: if you have 2 hitsounds, each one of them has a 50% chance of being played on a note tick)
