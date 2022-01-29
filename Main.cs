@@ -31,9 +31,10 @@ namespace SpeenPhone
                 File.Create(ConfigFileName).Close();
             Config = new IniFile(ConfigFileName);
 
-            GetMappings();
-            Harmony harmony = new Harmony(PluginInfo.GUID);
-            harmony.PatchAll<AudioPatches>();
+            if (GetMappings())
+                Harmony.CreateAndPatchAll(typeof(AudioPatches));
+            //Harmony harmony = new Harmony(PluginInfo.GUID);
+            //harmony.PatchAll<AudioPatches>();
         }
 
         public static bool TryGetClips(string name, out AudioClip[] clips) {
@@ -45,7 +46,7 @@ namespace SpeenPhone
             return false;
         }
 
-        private static void GetMappings()
+        private static bool GetMappings()
         {
             string soundsPath = Config.GetValueOrDefaultTo("SFX", "SoundsPath", string.Empty);
 
@@ -54,12 +55,19 @@ namespace SpeenPhone
                 LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the sounds folder path");
                 LogWarning("More informations on the GitHub page: https://github.com/SRXDModdingGroup/SpeenPhone#hitsound-folder-info");
 
-                return;
+                return false;
             }
             
             if (!Directory.Exists(soundsPath))
             {
                 LogError("The folder specified in the configuration file does not exist or is inaccessible.");
+                return false;
+            }
+
+            if (!File.Exists(Path.Combine(soundsPath, "Mappings.txt")))
+            {
+                LogError("The folder specified in the configuration file does not contain a Mappings.txt file");
+                return false;
             }
 
             mappings = new Dictionary<string, string>();
@@ -93,6 +101,7 @@ namespace SpeenPhone
                 
                 newClips.Add(name, clips);
             }
+            return true;
         }
 
         private static bool TryLoadClips(string directory, out AudioClip[] clips) {
