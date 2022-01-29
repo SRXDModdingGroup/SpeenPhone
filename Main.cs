@@ -39,6 +39,8 @@ namespace SpeenPhone
         {
             SoundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", string.Empty);
             
+            LogMessage($"Path is {SoundsPath}");
+            
             if (string.IsNullOrWhiteSpace(SoundsPath))
             {
                 LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the hitsounds folder path");
@@ -58,6 +60,7 @@ namespace SpeenPhone
             
             if (!Directory.Exists(directory)) {
                 clips = null;
+                LogMessage($"No directory {directory}");
                 
                 return false;
             }
@@ -95,14 +98,8 @@ namespace SpeenPhone
                     clip = www.GetAudioClip();
                     
                     while (clip.loadState == AudioDataLoadState.Loading) { }
-
-                    if (clip.loadState == AudioDataLoadState.Loaded)
-                        LogInfo($"Loaded audio file at {path}");
-                    else {
-                        clip = null;
-                        LogInfo($"Failed to load audio file at {path}");
-                    }
                     
+                    LogInfo($"Loaded audio file at {path}");
                 }
                 catch
                 {
