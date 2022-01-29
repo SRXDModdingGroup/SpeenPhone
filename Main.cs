@@ -17,8 +17,10 @@ namespace SpeenPhone
         public static string ConfigFileName { get; } = Path.Combine(ConfigPath, "SpeenPhoneConfig.ini");
 
         public new static IniFile Config { get; private set; }
+        
+        public static string SoundsPath { get; private set; }
 
-        void Awake()
+        private void Awake()
         {
             logger = Logger;
 
@@ -28,83 +30,87 @@ namespace SpeenPhone
                 File.Create(ConfigFileName).Close();
             Config = new IniFile(ConfigFileName);
 
-            LoadHitsounds();
+            GetSoundsPath();
             Harmony harmony = new Harmony(PluginInfo.GUID);
             harmony.PatchAll<AudioPatches>();
         }
 
-        void LoadHitsounds()
+        private static void GetSoundsPath()
         {
-            string hitsoundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", "/path/to/hitsounds/folder");
-            if (hitsoundsPath == "/path/to/hitsounds/folder")
+            SoundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", string.Empty);
+            
+            if (string.IsNullOrWhiteSpace(SoundsPath))
             {
                 LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the hitsounds folder path");
                 LogWarning("More informations on the GitHub page: https://github.com/SRXDModdingGroup/SpeenPhone#hitsound-folder-info");
+
                 return;
             }
-            if (!Directory.Exists(hitsoundsPath))
+            
+            if (!Directory.Exists(SoundsPath))
             {
                 LogError("The folder specified in the configuration file does not exist or is inaccessible.");
-                return;
-            }
-
-            if (Directory.Exists(Path.Combine(hitsoundsPath, "Fail")))
-            {
-                List<AudioClip> fail = new List<AudioClip>();
-                foreach (string path in Directory.EnumerateFiles(Path.Combine(hitsoundsPath, "Fail")))
-                {
-                    fail.Add(LoadAudio(path));
-                }
-                AudioPatches.DeathSounds = fail.ToArray();
-            }
-            if (Directory.Exists(Path.Combine(hitsoundsPath, "Win")))
-            {
-                List<AudioClip> win = new List<AudioClip>();
-                foreach (string path in Directory.EnumerateFiles(Path.Combine(hitsoundsPath, "Win")))
-                {
-                    win.Add(LoadAudio(path));
-                }
-                AudioPatches.WinSounds = win.ToArray();
-            }
-            if (Directory.Exists(Path.Combine(hitsoundsPath, "Miss")))
-            {
-                List<AudioClip> miss = new List<AudioClip>();
-                foreach (string path in Directory.EnumerateFiles(Path.Combine(hitsoundsPath, "Miss")))
-                {
-                    miss.Add(LoadAudio(path));
-                }
-                AudioPatches.MissSounds = miss.ToArray();
-            }
-            if (Directory.Exists(Path.Combine(hitsoundsPath, "Hit")))
-            {
-                List<AudioClip> hit = new List<AudioClip>();
-                foreach (string path in Directory.EnumerateFiles(Path.Combine(hitsoundsPath, "Hit")))
-                {
-                    hit.Add(LoadAudio(path));
-                }
-                AudioPatches.HitSounds = hit.ToArray();
             }
         }
 
-        public static AudioClip LoadAudio(string path)
-        {
+        public static bool TryLoadClips(string directory, out AudioClip[] clips) {
+            directory = Path.Combine(SoundsPath, directory);
+            
+            if (!Directory.Exists(directory)) {
+                clips = null;
+                
+                return false;
+            }
+
+            var clipsList = new List<AudioClip>();
+
+            foreach (string path in Directory.EnumerateFiles(directory)) {
+                if (TryLoadClip(path, out var clip))
+                    clipsList.Add(clip);
+            }
+
+            if (clipsList.Count == 0) {
+                clips = null;
+
+                return false;
+            }
+
+            clips = clipsList.ToArray();
+
+            return true;
+        }
+
+        private static bool TryLoadClip(string path, out AudioClip clip) {
+            clip = null;
+
+            if (!File.Exists(path))
+                return false;
+            
 #pragma warning disable 0618
             using (WWW www = new WWW(BepInEx.Utility.ConvertToWWWFormat(path)))
 #pragma warning restore 0618
             {
-                AudioClip clip = null;
                 try
                 {
                     clip = www.GetAudioClip();
-                    while (clip.loadState != AudioDataLoadState.Loaded) { }
-                    Main.LogInfo($"Loaded audio file at {path}");
+                    
+                    while (clip.loadState == AudioDataLoadState.Loading) { }
+
+                    if (clip.loadState == AudioDataLoadState.Loaded)
+                        LogInfo($"Loaded audio file at {path}");
+                    else {
+                        clip = null;
+                        LogInfo($"Failed to load audio file at {path}");
+                    }
+                    
                 }
                 catch
                 {
-                    Main.LogError($"Error while loading {path}");
-                    Main.LogError(www.error);
+                    LogError($"Error while loading {path}");
+                    LogError(www.error);
                 }
-                return clip;
+                
+                return clip != null;
             }
         }
 
