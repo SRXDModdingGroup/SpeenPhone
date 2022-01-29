@@ -47,11 +47,11 @@ namespace SpeenPhone
 
         private static void GetMappings()
         {
-            string soundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", string.Empty);
+            string soundsPath = Config.GetValueOrDefaultTo("SFX", "SoundsPath", string.Empty);
 
             if (string.IsNullOrWhiteSpace(soundsPath))
             {
-                LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the hitsounds folder path");
+                LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the sounds folder path");
                 LogWarning("More informations on the GitHub page: https://github.com/SRXDModdingGroup/SpeenPhone#hitsound-folder-info");
 
                 return;
