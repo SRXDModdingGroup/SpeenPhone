@@ -17,8 +17,9 @@ namespace SpeenPhone
         public static string ConfigFileName { get; } = Path.Combine(ConfigPath, "SpeenPhoneConfig.ini");
 
         public new static IniFile Config { get; private set; }
-        
-        public static string SoundsPath { get; private set; }
+
+        private static Dictionary<string, string> mappings;
+        private static Dictionary<string, AudioClip[]> newClips;
 
         private void Awake()
         {
@@ -30,18 +31,25 @@ namespace SpeenPhone
                 File.Create(ConfigFileName).Close();
             Config = new IniFile(ConfigFileName);
 
-            GetSoundsPath();
+            GetMappings();
             Harmony harmony = new Harmony(PluginInfo.GUID);
             harmony.PatchAll<AudioPatches>();
         }
 
-        private static void GetSoundsPath()
+        public static bool TryGetClips(string name, out AudioClip[] clips) {
+            if (mappings.TryGetValue(name, out string mapping) && newClips.TryGetValue(mapping, out clips))
+                return true;
+
+            clips = null;
+
+            return false;
+        }
+
+        private static void GetMappings()
         {
-            SoundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", string.Empty);
-            
-            LogMessage($"Path is {SoundsPath}");
-            
-            if (string.IsNullOrWhiteSpace(SoundsPath))
+            string soundsPath = Config.GetValueOrDefaultTo("SFX", "HitsoundsPath", string.Empty);
+
+            if (string.IsNullOrWhiteSpace(soundsPath))
             {
                 LogWarning("This is your first time running the mod (or update 1.1.0). Go to Documents/SpeenMods/SpeenPhoneConfig.ini to change the hitsounds folder path");
                 LogWarning("More informations on the GitHub page: https://github.com/SRXDModdingGroup/SpeenPhone#hitsound-folder-info");
@@ -49,18 +57,47 @@ namespace SpeenPhone
                 return;
             }
             
-            if (!Directory.Exists(SoundsPath))
+            if (!Directory.Exists(soundsPath))
             {
                 LogError("The folder specified in the configuration file does not exist or is inaccessible.");
             }
+
+            mappings = new Dictionary<string, string>();
+
+            using (var reader = new StreamReader(Path.Combine(soundsPath, "Mappings.txt"))) {
+                while (!reader.EndOfStream) {
+                    string line = reader.ReadLine();
+
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+                
+                    string[] split = line.Split('=');
+                    
+                    if (split.Length < 2)
+                        continue;
+                    
+                    mappings.Add(split[0].Trim(), split[1].Trim());
+                }
+            }
+
+            newClips = new Dictionary<string, AudioClip[]>();
+
+            foreach (string directory in Directory.EnumerateDirectories(soundsPath)) {
+                string name = Path.GetFileName(directory);
+                
+                if (string.IsNullOrWhiteSpace(name) || !mappings.ContainsValue(name) || !TryLoadClips(directory, out var clips)) {
+                    LogWarning($"Could not get clips for {name}");
+                    
+                    continue;
+                }
+                
+                newClips.Add(name, clips);
+            }
         }
 
-        public static bool TryLoadClips(string directory, out AudioClip[] clips) {
-            directory = Path.Combine(SoundsPath, directory);
-            
+        private static bool TryLoadClips(string directory, out AudioClip[] clips) {
             if (!Directory.Exists(directory)) {
                 clips = null;
-                LogMessage($"No directory {directory}");
                 
                 return false;
             }

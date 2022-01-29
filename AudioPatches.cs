@@ -23,7 +23,7 @@ namespace SpeenPhone
         [HarmonyPatch(typeof(SoundEffectAssets), "CreateSoundEffectMappings"), HarmonyPrefix]
         private static void SoundEffectAssets_CreateSoundEffectMappings_Prefix(SoundEffectAssets __instance, Dictionary<string, SoundEffect> ____soundEffectMapping) {
             foreach (var field in typeof(SoundEffectAssets).GetFields(BindingFlags.Instance | BindingFlags.Public)) {
-                if (field.FieldType != typeof(SoundEffect) || !Main.TryLoadClips(field.Name, out var clips))
+                if (field.FieldType != typeof(SoundEffect) || !Main.TryGetClips(field.Name, out var clips))
                     continue;
 
                 var soundEffect = (SoundEffect) field.GetValue(__instance);
