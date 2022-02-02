@@ -1,60 +1,66 @@
 ﻿using HarmonyLib;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace SpeenPhone
 {
     public class AudioPatches
     {
-        public static AudioClip[] HitSounds;
-        public static AudioClip[] MissSounds;
-        public static AudioClip[] DeathSounds;
-        public static AudioClip[] WinSounds;
+        private static bool enableCustomSounds = true;
 
-        private static bool disableHitsounds = false;
+        private static List<FieldInfo> fields;
+        private static Dictionary<string, SoundEffect> defaultSoundEffects;
+        private static Dictionary<string, SoundEffect> customSoundEffects;
 
-        [HarmonyPatch(typeof(SoundEffectPlayer), nameof(SoundEffectPlayer.PlayOneShot))]
-        [HarmonyPrefix]
-        private static void Hitsound(ref SoundEffect soundEffect)
-        {
-            if (disableHitsounds) return;
-            var sfe = SoundEffectAssets.Instance;
-            if (DeathSounds != null && DeathSounds.Length > 0 && soundEffect.clips == sfe.trackFailedSound.clips)
-            {
+        private static void SetClips() {
+            var instance = SoundEffectAssets.Instance;
+            
+            foreach (var field in fields) {
+                string name = field.Name;
+                SoundEffect soundEffect;
+
+                if (enableCustomSounds)
+                    soundEffect = customSoundEffects[name];
+                else
+                    soundEffect = defaultSoundEffects[name];
                 
-                soundEffect.clips = DeathSounds;
-                return;
-            }
-            if (WinSounds != null && WinSounds.Length > 0 && soundEffect.clips == sfe.trackCompleteSound.clips)
-            {
-                soundEffect.clips = WinSounds;
-                return;
-            }
-            if (MissSounds != null && MissSounds.Length > 0 && soundEffect.clips == sfe.loseHealthSound.clips)
-            {
-                soundEffect.clips = MissSounds;
-                return;
+                field.SetValue(instance, soundEffect);
             }
         }
 
-        [HarmonyPatch(typeof(NoteSoundPlayer), nameof(NoteSoundPlayer.GetSoundEffectForNoteSoundType))]
-        [HarmonyPostfix]
-        private static void PlayNote(NoteSoundPlayer.NoteSoundType noteSoundType, SoundEffectAssets soundEffectAssets, ref SoundEffect __result)
-        {
-            if (disableHitsounds) return;
-            if (HitSounds == null || HitSounds.Length == 0) return;
-            __result.clips = HitSounds;
-        }
-
-        [HarmonyPatch(typeof(Track), nameof(Track.Update))]
-        [HarmonyPostfix]
-        private static void ToggleHitsounds()
+        [HarmonyPatch(typeof(Game), nameof(Game.Update)), HarmonyPostfix]
+        private static void Game_Update_Postfix()
         {
             if (Input.GetKeyDown(KeyCode.F12))
             {
-                disableHitsounds = !disableHitsounds;
-                NotificationSystemGUI.AddMessage("Custom hitsounds are " + (disableHitsounds ? "OFF" : "ON"));
+                enableCustomSounds = !enableCustomSounds;
+                NotificationSystemGUI.AddMessage("Custom sounds are " + (enableCustomSounds ? "ON" : "OFF"));
+                SetClips();
             }
+        }
+
+        [HarmonyPatch(typeof(SoundEffectAssets), "CreateSoundEffectMappings"), HarmonyPrefix]
+        private static void SoundEffectAssets_CreateSoundEffectMappings_Prefix(SoundEffectAssets __instance, Dictionary<string, SoundEffect> ____soundEffectMapping) {
+            fields = new List<FieldInfo>();
+            defaultSoundEffects = new Dictionary<string, SoundEffect>();
+            customSoundEffects = new Dictionary<string, SoundEffect>();
+            
+            foreach (var field in typeof(SoundEffectAssets).GetFields(BindingFlags.Instance | BindingFlags.Public)) {
+                string name = field.Name;
+                    
+                if (field.FieldType != typeof(SoundEffect) || !Main.TryGetClips(name, out var clips))
+                    continue;
+                
+                var soundEffect = (SoundEffect) field.GetValue(__instance);
+
+                fields.Add(field);
+                defaultSoundEffects.Add(name, soundEffect);
+                soundEffect.clips = clips;
+                customSoundEffects.Add(name, soundEffect);
+            }
+            
+            SetClips();
         }
     }
 }
